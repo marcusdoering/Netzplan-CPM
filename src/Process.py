@@ -30,21 +30,40 @@ class Process:
     def set_dauer(self, new_dauer: int):
         self.dauer = new_dauer
 
+    def calc_fez(self):
+        if self.is_start_process():
+            self.fez = self.dauer
+        else:
+            self.fez = self.faz + self.dauer
+
     def calc_faz(self):
-        print()
-        current_max = 0
-        for element in self.predecessor:
-            if element.fez > current_max:
-                current_max = element.fez
-        self.faz = current_max
+        if self.is_start_process():
+            self.faz = 0
+        else:
+            current_max = 0
+            for pre_element in self.predecessor:
+                if pre_element.fez > current_max:
+                    current_max = pre_element.fez
+            self.faz = current_max
+
+    def calc_saz(self):
+        self.saz = self.sez - self.dauer
 
     def calc_sez(self):
-        print()
-        current_min = 9999
-        for element in self.successor:
-            if element.saz < current_min:
-                current_min = element.saz
-        self.sez = current_min
+        if self.is_end_process():
+            self.sez = self.fez
+        else:
+            current_min = 9999
+            for succ_element in self.successor:
+                if succ_element.saz < current_min:
+                    current_min = succ_element.saz
+            self.sez = current_min
+
+    def is_critical(self):
+        if self.faz == self.saz:
+            return True
+        else:
+            return False
 
     def add_predecessor(self, process):
         self.predecessor.append(process)
