@@ -1,6 +1,7 @@
-from tkinter import Tk, Canvas, Menu, Button
+from tkinter import Tk, Canvas, Menu, filedialog
 from src.ProcessXT import ProcessXT
-import time
+
+import json
 
 
 class ProPlanG:
@@ -9,6 +10,7 @@ class ProPlanG:
         self.root = Tk()
         self.root.title("ProPlanG")
         # self.root.geometry('600x530')
+        self.process_data = []
 
         # Create Tkinter Menu (menubar on top, below window title)
         menubar = Menu(self.root)
@@ -19,7 +21,7 @@ class ProPlanG:
         menubar.add_cascade(label="File", menu=filemenu)
         menubar.add_command(label="Placeholder")
         # Pulldown menu content
-        filemenu.add_command(label="Open...")
+        filemenu.add_command(label="Open...", command=self.read_config_file)
         filemenu.add_command(label="Save...")
 
         # display the menu
@@ -32,46 +34,27 @@ class ProPlanG:
             height=500,
             borderwidth=1)
 
-        self.btn_add_process = Button(self.root, text="Prozess hinzufuegen", command=self.insert_new_process)
-        self.btn_rem_process = Button(self.root, text="Prozess entfernen")
-
-        self.btn_add_process.grid(column=0, row=0)
-        self.btn_rem_process.grid(column=1, row=0)
-        self.main_canvas.grid(column=0, row=1, columnspan=2)
+        self.main_canvas.grid(column=0, row=0)
 
         self.root.mainloop()
 
-    @staticmethod
-    def handle_process_calculation(list_of_proc):
-        # todo: testing data as placeholder
-        proc0 = ProcessXT(0, "Start", 0)
-        proc1 = ProcessXT(1, "A1", 1)
-        proc2 = ProcessXT(2, "B1", 1)
-        proc3 = ProcessXT(3, "B2", 3)
-        proc4 = ProcessXT(4, "End", 0)
-
-        proc0.add_successor_and_predecessor(proc1)
-        proc1.add_successor_and_predecessor(proc2)
-        proc1.add_successor_and_predecessor(proc3)
-        proc2.add_successor_and_predecessor(proc4)
-        proc3.add_successor_and_predecessor(proc4)
-
-        list_of_proc = [proc0, proc1, proc2, proc3, proc4]
-
+    def handle_process_calculation(self):
         # Vorwaertsterminierung
-        for element in list_of_proc:
+        for element in self.process_data:
             element.calc_faz()
             element.calc_fez()
 
         # Rueckwaertsterminierung
-        for element in list_of_proc[::-1]:
+        for element in self.process_data[::-1]:
             element.calc_sez()
             element.calc_saz()
 
         # Pufferberechnung
-        for element in list_of_proc:
+        for element in self.process_data:
             element.calc_gp()
             element.calc_fp()
+
+        print()
 
         # todo: calculate positioning of processes on canvas
 
@@ -91,12 +74,13 @@ class ProPlanG:
         """
         # for the outer values
         # top left
-        self.main_canvas.create_rectangle(10, 10, 40, 40, tags=process.name)
-        self.main_canvas.create_text(25, 25, text=process.faz)
+        self.main_canvas.create_text(55, 25, text=process.faz, tags=process.name)
         # bot left
-        self.main_canvas.create_rectangle(10, 100, 40, 130, tags=process.name)
-        self.main_canvas.create_text(25, 115, text=process.duration)
-
+        self.main_canvas.create_text(55, 115, text=process.saz, tags=process.name)
+        # top right
+        self.main_canvas.create_text(115, 25, text=process.fez, tags=process.name)
+        # bot right
+        self.main_canvas.create_text(115, 115, text=process.sez, tags=process.name)
 
         # for the inner values
         # top left
@@ -119,6 +103,39 @@ class ProPlanG:
         self.main_canvas.move(process_tag, movement_x, movement_y)
         self.main_canvas.update()
 
-    def insert_new_process(self):
-        self.draw_empty_process(ProcessXT(0, "Start", 0))
+    def insert_new_process(self, process):
+        self.draw_empty_process(process)
+        self.list_of_process.append(process)
+        self.handle_process_calculation()
         self.main_canvas.update()
+
+    @staticmethod
+    def open_file():
+        save_path = filedialog.askopenfilename(
+            title="Konfigurationsdatei auswaehlen..."
+        )
+        if save_path and save_path.endswith("json"):
+            return save_path
+        else:
+            return None
+
+    def read_config_file(self):
+        save_path = self.open_file()
+
+        if save_path is not None:
+            with open(save_path, "r") as file:
+                json_process_data = json.load(file)
+
+            # Iterate over the json process data
+            for element in json_process_data.get("Prozesse"):
+                # Create a new process object for each data set, append all to list
+                self.process_data.append(ProcessXT(element.get("id"), element.get("name"), element.get("duration")))
+
+            # Iterate over the json process data
+            for element in json_process_data.get("Prozesse"):
+                # Iterate over the list of successors
+                for single_successor in element.get("successor"):
+                    # Append the current successor (as obj) to the current data set (as obj)
+                    self.process_data[element.get("id")].add_successor_and_predecessor(self.process_data[single_successor])
+
+        self.handle_process_calculation()
