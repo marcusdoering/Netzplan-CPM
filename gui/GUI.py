@@ -59,8 +59,37 @@ class ProPlanG:
         # todo: calculate positioning of processes on canvas
 
         # todo: place all processes on canvas
+        # Draw processes
+        count = 0
+        for element in self.process_data:
+            self.insert_new_process(count, element)
+            count += 1
 
-    def draw_empty_process(self, process):
+        # Draw arrows / connections
+        for element in self.process_data:
+            for successor in element.successor:
+                self.draw_arrow(element, successor)
+
+    def draw_arrow(self, origin, target):
+        origin_coords = self.main_canvas.coords(origin.name)
+        target_coords = self.main_canvas.coords(target.name)
+
+        if origin.is_critical():
+            color = "red"
+        else:
+            color = "black"
+
+        self.main_canvas.create_line(
+            origin_coords[0] + 75,
+            origin_coords[1] + 45,
+            target_coords[0] - 15,
+            target_coords[1] + 45,
+            arrow="last",
+            fill=color)
+
+        self.main_canvas.update()
+
+    def draw_empty_process(self, count, process):
         """
         Draw the process rectangles and fill them with default values.
 
@@ -69,44 +98,45 @@ class ProPlanG:
 
         The entire process may be called using the tag (= process name).
 
+        :param count:
         :param process:
         :return:
         """
+        # calc offset
+        inc_amount = count * 130
         # for the outer values
         # top left
-        self.main_canvas.create_text(55, 25, text=process.faz, tags=process.name)
+        self.main_canvas.create_text(inc_amount + 55, 25, text=process.faz, tags=process.name)
         # bot left
-        self.main_canvas.create_text(55, 115, text=process.saz, tags=process.name)
+        self.main_canvas.create_text(inc_amount + 55, 115, text=process.saz, tags=process.name)
         # top right
-        self.main_canvas.create_text(115, 25, text=process.fez, tags=process.name)
+        self.main_canvas.create_text(inc_amount + 115, 25, text=process.fez, tags=process.name)
         # bot right
-        self.main_canvas.create_text(115, 115, text=process.sez, tags=process.name)
+        self.main_canvas.create_text(inc_amount + 115, 115, text=process.sez, tags=process.name)
 
         # for the inner values
         # top left
-        self.main_canvas.create_rectangle(40, 40, 70, 70, tags=process.name)
-        self.main_canvas.create_text(55, 55, text=process.id)
+        self.main_canvas.create_rectangle(inc_amount + 40, 40, inc_amount + 70, 70, tags=process.name)
+        self.main_canvas.create_text(inc_amount + 55, 55, text=process.id)
         # bot left
-        self.main_canvas.create_rectangle(40, 70, 70, 100, tags=process.name)
-        self.main_canvas.create_text(55, 85, text=process.duration)
+        self.main_canvas.create_rectangle(inc_amount + 40, 70, inc_amount + 70, 100, tags=process.name)
+        self.main_canvas.create_text(inc_amount + 55, 85, text=process.duration)
         # bot mid
-        self.main_canvas.create_rectangle(70, 70, 100, 100, tags=process.name)
-        self.main_canvas.create_text(85, 85, text=process.gp)
+        self.main_canvas.create_rectangle(inc_amount + 70, 70, inc_amount + 100, 100, tags=process.name)
+        self.main_canvas.create_text(inc_amount + 85, 85, text=process.gp)
         # top right
-        self.main_canvas.create_rectangle(70, 40, 130, 70, tags=process.name)
-        self.main_canvas.create_text(85, 55, text=process.name)
+        self.main_canvas.create_rectangle(inc_amount + 70, 40, inc_amount + 130, 70, tags=process.name)
+        self.main_canvas.create_text(inc_amount + 85, 55, text=process.name)
         # bot right
-        self.main_canvas.create_rectangle(100, 70, 130, 100, tags=process.name)
-        self.main_canvas.create_text(115, 85, text=process.fp)
+        self.main_canvas.create_rectangle(inc_amount + 100, 70, inc_amount + 130, 100, tags=process.name)
+        self.main_canvas.create_text(inc_amount + 115, 85, text=process.fp)
 
     def move_process(self, process_tag: str, movement_x, movement_y):
         self.main_canvas.move(process_tag, movement_x, movement_y)
         self.main_canvas.update()
 
-    def insert_new_process(self, process):
-        self.draw_empty_process(process)
-        self.list_of_process.append(process)
-        self.handle_process_calculation()
+    def insert_new_process(self, count, process):
+        self.draw_empty_process(count, process)
         self.main_canvas.update()
 
     @staticmethod
