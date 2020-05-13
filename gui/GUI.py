@@ -1,7 +1,7 @@
-from tkinter import Tk, Canvas, Menu, filedialog
-from src.ProcessXT import ProcessXT
-
+from tkinter import Tk, Canvas, Menu, filedialog, Scrollbar
+from PIL import ImageGrab
 import json
+from src.ProcessXT import ProcessXT
 
 
 class ProPlanG:
@@ -11,6 +11,7 @@ class ProPlanG:
         self.root.title("ProPlanG")
         # self.root.geometry('600x530')
         self.process_data = []
+        self.prev_visited = []
 
         # Create Tkinter Menu (menubar on top, below window title)
         menubar = Menu(self.root)
@@ -22,7 +23,15 @@ class ProPlanG:
         menubar.add_command(label="Placeholder")
         # Pulldown menu content
         filemenu.add_command(label="Open...", command=self.read_config_file)
-        filemenu.add_command(label="Save...")
+        filemenu.add_command(label="Save as json...")
+        filemenu.add_command(label="Save as png...", command=self.save_as_png)
+
+        # scrollbar
+        x_scrollbar = Scrollbar(self.root, orient="horizontal")
+        y_scrollbar = Scrollbar(self.root, orient="vertical")
+
+        x_scrollbar.grid(row=1, column=0, sticky="E" + "W")
+        y_scrollbar.grid(row=0, column=1, sticky="N" + "S")
 
         # display the menu
         self.root.config(menu=menubar)
@@ -30,9 +39,17 @@ class ProPlanG:
         # Prepare the main canvas
         self.main_canvas = Canvas(
             self.root,
-            width=500,
+            width=1000,
             height=500,
-            borderwidth=1)
+            borderwidth=1,
+            scrollregion=(0, 0, 2000, 1000),
+            xscrollcommand=x_scrollbar.set,
+            yscrollcommand=y_scrollbar.set
+        )
+
+        # enable actual scrolling
+        x_scrollbar.config(command=self.main_canvas.xview)
+        y_scrollbar.config(command=self.main_canvas.yview)
 
         self.main_canvas.grid(column=0, row=0)
 
@@ -60,10 +77,22 @@ class ProPlanG:
 
         # todo: place all processes on canvas
         # Draw processes
-        count = 0
+        side_count = 0
+        height_count = 0
         for element in self.process_data:
-            self.insert_new_process(count, element)
-            count += 1
+            if element.duration == 0:
+                height_count = 0
+                self.insert_new_process(side_count, height_count, element)
+            elif element.duration != 0 and element.faz in self.prev_visited:
+                # place one below
+                side_count -= 1
+                height_count += 1
+                self.insert_new_process(side_count, height_count, element)
+            else:
+                self.prev_visited.append(element.faz)
+                self.insert_new_process(side_count, height_count, element)
+                height_count = 0
+            side_count += 1
 
         # Draw arrows / connections
         for element in self.process_data:
@@ -89,7 +118,7 @@ class ProPlanG:
 
         self.main_canvas.update()
 
-    def draw_empty_process(self, count, process):
+    def draw_empty_process(self, side_count, height_count, process):
         """
         Draw the process rectangles and fill them with default values.
 
@@ -98,45 +127,47 @@ class ProPlanG:
 
         The entire process may be called using the tag (= process name).
 
-        :param count:
+        :param side_count:
         :param process:
         :return:
         """
         # calc offset
-        inc_amount = count * 130
+        # todo
+        inc_amount_side = side_count * 130
+        inc_amount_height = height_count * 130
         # for the outer values
         # top left
-        self.main_canvas.create_text(inc_amount + 55, 25, text=process.faz, tags=process.name)
+        self.main_canvas.create_text(inc_amount_side + 55, inc_amount_height + 25, text=process.faz, tags=process.name)
         # bot left
-        self.main_canvas.create_text(inc_amount + 55, 115, text=process.saz, tags=process.name)
+        self.main_canvas.create_text(inc_amount_side + 55, inc_amount_height + 115, text=process.saz, tags=process.name)
         # top right
-        self.main_canvas.create_text(inc_amount + 115, 25, text=process.fez, tags=process.name)
+        self.main_canvas.create_text(inc_amount_side + 115, inc_amount_height + 25, text=process.fez, tags=process.name)
         # bot right
-        self.main_canvas.create_text(inc_amount + 115, 115, text=process.sez, tags=process.name)
+        self.main_canvas.create_text(inc_amount_side + 115, inc_amount_height + 115, text=process.sez, tags=process.name)
 
         # for the inner values
         # top left
-        self.main_canvas.create_rectangle(inc_amount + 40, 40, inc_amount + 70, 70, tags=process.name)
-        self.main_canvas.create_text(inc_amount + 55, 55, text=process.id)
+        self.main_canvas.create_rectangle(inc_amount_side + 40, inc_amount_height + 40, inc_amount_side + 70, inc_amount_height + 70, tags=process.name)
+        self.main_canvas.create_text(inc_amount_side + 55, inc_amount_height + 55, text=process.id)
         # bot left
-        self.main_canvas.create_rectangle(inc_amount + 40, 70, inc_amount + 70, 100, tags=process.name)
-        self.main_canvas.create_text(inc_amount + 55, 85, text=process.duration)
+        self.main_canvas.create_rectangle(inc_amount_side + 40, inc_amount_height + 70, inc_amount_side + 70, inc_amount_height + 100, tags=process.name)
+        self.main_canvas.create_text(inc_amount_side + 55, inc_amount_height + 85, text=process.duration)
         # bot mid
-        self.main_canvas.create_rectangle(inc_amount + 70, 70, inc_amount + 100, 100, tags=process.name)
-        self.main_canvas.create_text(inc_amount + 85, 85, text=process.gp)
+        self.main_canvas.create_rectangle(inc_amount_side + 70, inc_amount_height + 70, inc_amount_side + 100, inc_amount_height + 100, tags=process.name)
+        self.main_canvas.create_text(inc_amount_side + 85, inc_amount_height + 85, text=process.gp)
         # top right
-        self.main_canvas.create_rectangle(inc_amount + 70, 40, inc_amount + 130, 70, tags=process.name)
-        self.main_canvas.create_text(inc_amount + 85, 55, text=process.name)
+        self.main_canvas.create_rectangle(inc_amount_side + 70, inc_amount_height + 40, inc_amount_side + 130, inc_amount_height + 70, tags=process.name)
+        self.main_canvas.create_text(inc_amount_side + 85, inc_amount_height + 55, text=process.name)
         # bot right
-        self.main_canvas.create_rectangle(inc_amount + 100, 70, inc_amount + 130, 100, tags=process.name)
-        self.main_canvas.create_text(inc_amount + 115, 85, text=process.fp)
+        self.main_canvas.create_rectangle(inc_amount_side + 100, inc_amount_height + 70, inc_amount_side + 130, inc_amount_height + 100, tags=process.name)
+        self.main_canvas.create_text(inc_amount_side + 115, inc_amount_height + 85, text=process.fp)
 
     def move_process(self, process_tag: str, movement_x, movement_y):
         self.main_canvas.move(process_tag, movement_x, movement_y)
         self.main_canvas.update()
 
-    def insert_new_process(self, count, process):
-        self.draw_empty_process(count, process)
+    def insert_new_process(self, side_count, height_count, process):
+        self.draw_empty_process(side_count, height_count, process)
         self.main_canvas.update()
 
     @staticmethod
@@ -145,6 +176,16 @@ class ProPlanG:
             title="Konfigurationsdatei auswaehlen..."
         )
         if save_path and save_path.endswith("json"):
+            return save_path
+        else:
+            return None
+
+    @staticmethod
+    def save_file():
+        save_path = filedialog.asksaveasfilename(
+            title="Speicherort auswaehlen..."
+        )
+        if save_path:
             return save_path
         else:
             return None
@@ -169,3 +210,12 @@ class ProPlanG:
                     self.process_data[element.get("id")].add_successor_and_predecessor(self.process_data[single_successor])
 
         self.handle_process_calculation()
+
+    def save_as_png(self):
+        save_path = self.save_file()
+        x = self.root.winfo_rootx() + self.main_canvas.winfo_x()
+        y = self.root.winfo_rooty() + self.main_canvas.winfo_y()
+        x1 = x + self.main_canvas.winfo_width()
+        y1 = y + self.main_canvas.winfo_height()
+        # todo: this aint working yet
+        ImageGrab.grab().crop((x, y, x1, y1)).save(save_path)
