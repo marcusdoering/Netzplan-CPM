@@ -9,7 +9,6 @@ class ProPlanG:
         # Establish tkinter object
         self.root = Tk()
         self.root.title("ProPlanG")
-        # self.root.geometry('600x530')
         self.process_data = []
         self.prev_visited = []
 
@@ -20,18 +19,13 @@ class ProPlanG:
 
         # Menu content
         menubar.add_cascade(label="File", menu=filemenu)
-        menubar.add_command(label="Placeholder")
         # Pulldown menu content
         filemenu.add_command(label="Open...", command=self.read_config_file)
-        filemenu.add_command(label="Save as json...")
         filemenu.add_command(label="Save as png...", command=self.save_as_png)
 
         # scrollbar
         x_scrollbar = Scrollbar(self.root, orient="horizontal")
         y_scrollbar = Scrollbar(self.root, orient="vertical")
-
-        x_scrollbar.grid(row=1, column=0, sticky="E" + "W")
-        y_scrollbar.grid(row=0, column=1, sticky="N" + "S")
 
         # display the menu
         self.root.config(menu=menubar)
@@ -51,7 +45,10 @@ class ProPlanG:
         x_scrollbar.config(command=self.main_canvas.xview)
         y_scrollbar.config(command=self.main_canvas.yview)
 
+        # place widgets in grid
         self.main_canvas.grid(column=0, row=0)
+        x_scrollbar.grid(row=1, column=0, sticky="E" + "W")
+        y_scrollbar.grid(row=0, column=1, sticky="N" + "S")
 
         self.root.mainloop()
 
@@ -138,6 +135,8 @@ class ProPlanG:
         """
         Draw the arrows that connect from the origin process to all processes
         that follow afterwards.
+        If the processes that are to be connected do not share the same height
+        three lines are drawn instead.
         If the process is part of the critical path color the arrow red instead.
 
         :param origin: The origin process to draw the arrow from.
@@ -152,13 +151,44 @@ class ProPlanG:
         else:
             color = "black"
 
-        self.main_canvas.create_line(
-            origin_coords[0] + 75,
-            origin_coords[1] + 45,
-            target_coords[0] - 15,
-            target_coords[1] + 45,
-            arrow="last",
-            fill=color)
+        # same height, one straight line:
+        if origin.gui_height == target.gui_height:
+            self.main_canvas.create_line(
+                origin_coords[0] + 75,
+                origin_coords[1] + 45,
+                target_coords[0] - 15,
+                target_coords[1] + 45,
+                arrow="last",
+                fill=color)
+        # different height, three lines (as a curve):
+        else:
+            # if difference is positive: arrow moves down
+            # if difference is negative: arrow moves up
+            difference = target.gui_height - origin.gui_height
+            # x: 10 out
+            self.main_canvas.create_line(
+                origin_coords[0] + 75,
+                origin_coords[1] + 45,
+                origin_coords[0] + 95,
+                origin_coords[1] + 45,
+                arrow=None,
+                fill=color)
+            # y: 130 up / down
+            self.main_canvas.create_line(
+                origin_coords[0] + 95,
+                origin_coords[1] + 45,
+                origin_coords[0] + 95,
+                origin_coords[1] + 45 + 130 * difference,
+                arrow=None,
+                fill=color)
+            # x: connect with target
+            self.main_canvas.create_line(
+                origin_coords[0] + 95,
+                origin_coords[1] + 45 + 130 * difference,
+                target_coords[0] - 15,
+                target_coords[1] + 45,
+                arrow="last",
+                fill=color)
 
         self.main_canvas.update()
 
@@ -267,6 +297,7 @@ class ProPlanG:
 
         if save_path is not None:
             with open(save_path, "r") as file:
+                self.reset_data()
                 json_process_data = json.load(file)
 
             # sort processes in json if they are not ordered
@@ -287,6 +318,15 @@ class ProPlanG:
         self.handle_process_calculation()
         self.handle_process_drawing()
         self.handle_arrow_drawing()
+
+    def reset_data(self):
+        """
+        Reset the data from previous calculations.
+
+        :return: None
+        """
+        self.process_data = []
+        self.prev_visited = []
 
     def save_as_png(self):
         save_path = self.save_file()
