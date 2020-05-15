@@ -56,6 +56,13 @@ class ProPlanG:
         self.root.mainloop()
 
     def handle_process_calculation(self):
+        """
+        Iterate over all process objects and handle the calculation of the required values.
+        The calculation needs to be performed in multiple steps as certain values
+        cannot be calculated without knowing additional values from other processes.
+
+        :return: None
+        """
         # Vorwaertsterminierung
         for element in self.process_data:
             element.calc_faz()
@@ -71,45 +78,72 @@ class ProPlanG:
             element.calc_gp()
             element.calc_fp()
 
-        print()
+    def handle_process_drawing(self):
+        """
+        Handle the drawing of processes.
+        The calculation of the side_count and height_count is also performed.
+        The processing logic for this function is as follows:
 
-        # todo: calculate positioning of processes on canvas
+        - The starting process is at (0, 0).
+        - A process with only one predecessor inherits the height from the previous process.
+        - Processes that share the same predecessor are placed below each other.
+        - A process with multiple predecessors uses the smallest height of those processes.
 
-        # todo: place all processes on canvas
+        :return: None
+        """
         # Draw processes
         side_count = 0
-        height_count = 0
         for element in self.process_data:
+            # the starting process
             if len(element.predecessor) == 0:
                 element.gui_height = 0
                 self.insert_new_process(side_count, element.gui_height, element)
             else:
+                # a process that is used as the exit for a single process
                 if len(element.predecessor) == 1:
+                    # the first process on top
                     if self.prev_visited.count(element.faz) == 0:
                         element.gui_height = element.predecessor[0].gui_height
                         self.insert_new_process(side_count, element.gui_height, element)
                         self.prev_visited.append(element.faz)
+                    # additional processes, placed below
                     elif self.prev_visited.count(element.faz) > 0:
                         side_count -= 1
                         element.gui_height = self.prev_visited.count(element.faz)
                         self.insert_new_process(side_count, element.gui_height, element)
                         self.prev_visited.append(element.faz)
+                # a process that acts as the exit for multiple processes
                 elif len(element.predecessor) > 1:
-                    lowest_val = 9999
+                    lowest_gui_height = 9999
                     for pre_elements in element.predecessor:
-                        if pre_elements.faz < lowest_val:
-                            lowest_val = pre_elements.faz
-                    element.gui_height = lowest_val
+                        if pre_elements.gui_height < lowest_gui_height:
+                            lowest_gui_height = pre_elements.gui_height
+                    element.gui_height = lowest_gui_height
                     self.insert_new_process(side_count, element.gui_height, element)
                     self.prev_visited.append(element.faz)
             side_count += 1
 
+    def handle_arrow_drawing(self):
+        """
+        Iterate through all processes and handle the drawing of the arrows.
+
+        :return: None
+        """
         # Draw arrows / connections
         for element in self.process_data:
             for successor in element.successor:
                 self.draw_arrow(element, successor)
 
     def draw_arrow(self, origin, target):
+        """
+        Draw the arrows that connect from the origin process to all processes
+        that follow afterwards.
+        If the process is part of the critical path color the arrow red instead.
+
+        :param origin: The origin process to draw the arrow from.
+        :param target: The target process to draw the arrow to.
+        :return: None
+        """
         origin_coords = self.main_canvas.coords(origin.name)
         target_coords = self.main_canvas.coords(target.name)
 
@@ -137,12 +171,12 @@ class ProPlanG:
 
         The entire process may be called using the tag (= process name).
 
-        :param side_count:
-        :param process:
-        :return:
+        :param side_count: Count which column the process should be in.
+        :param height_count: Count which row the process should be in.
+        :param process: The process to insert.
+        :return: None
         """
         # calc offset
-        # todo
         inc_amount_side = side_count * 130
         inc_amount_height = height_count * 130
         # for the outer values
@@ -177,11 +211,25 @@ class ProPlanG:
         self.main_canvas.update()
 
     def insert_new_process(self, side_count, height_count, process):
+        """
+        Handle inserting a new process and update the canvas element
+        afterwards to show the changes.
+
+        :param side_count: Count which column the process should be in.
+        :param height_count: Count which row the process should be in.
+        :param process: The process to insert.
+        :return: None
+        """
         self.draw_empty_process(side_count, height_count, process)
         self.main_canvas.update()
 
     @staticmethod
     def open_file():
+        """
+        Open a dialogue that asks the user to select a file.
+
+        :return: The path to the file or None if the dialogue was interrupted.
+        """
         save_path = filedialog.askopenfilename(
             title="Konfigurationsdatei auswaehlen..."
         )
@@ -192,6 +240,11 @@ class ProPlanG:
 
     @staticmethod
     def save_file():
+        """
+        Open a dialogue that asks the user where to save a file.
+
+        :return: The path where to save the file or None if the dialogue was interrupted.
+        """
         save_path = filedialog.asksaveasfilename(
             title="Speicherort auswaehlen..."
         )
@@ -201,6 +254,15 @@ class ProPlanG:
             return None
 
     def read_config_file(self):
+        """
+        Handle the reading of a config file.
+        First get the path to the config file and then open it.
+        Sort all the data sets by ID and create process objects for every set.
+
+        Afterwards begin the handling of process calculation and drawing.
+
+        :return: None
+        """
         save_path = self.open_file()
 
         if save_path is not None:
@@ -223,6 +285,8 @@ class ProPlanG:
                     self.process_data[element.get("id")].add_successor_and_predecessor(self.process_data[single_successor])
 
         self.handle_process_calculation()
+        self.handle_process_drawing()
+        self.handle_arrow_drawing()
 
     def save_as_png(self):
         save_path = self.save_file()
