@@ -80,18 +80,28 @@ class ProPlanG:
         side_count = 0
         height_count = 0
         for element in self.process_data:
-            if element.duration == 0:
-                height_count = 0
-                self.insert_new_process(side_count, height_count, element)
-            elif element.duration != 0 and element.faz in self.prev_visited:
-                # place one below
-                side_count -= 1
-                height_count += 1
-                self.insert_new_process(side_count, height_count, element)
+            if len(element.predecessor) == 0:
+                element.gui_height = 0
+                self.insert_new_process(side_count, element.gui_height, element)
             else:
-                self.prev_visited.append(element.faz)
-                self.insert_new_process(side_count, height_count, element)
-                height_count = 0
+                if len(element.predecessor) == 1:
+                    if self.prev_visited.count(element.faz) == 0:
+                        element.gui_height = element.predecessor[0].gui_height
+                        self.insert_new_process(side_count, element.gui_height, element)
+                        self.prev_visited.append(element.faz)
+                    elif self.prev_visited.count(element.faz) > 0:
+                        side_count -= 1
+                        element.gui_height = self.prev_visited.count(element.faz)
+                        self.insert_new_process(side_count, element.gui_height, element)
+                        self.prev_visited.append(element.faz)
+                elif len(element.predecessor) > 1:
+                    lowest_val = 9999
+                    for pre_elements in element.predecessor:
+                        if pre_elements.faz < lowest_val:
+                            lowest_val = pre_elements.faz
+                    element.gui_height = lowest_val
+                    self.insert_new_process(side_count, element.gui_height, element)
+                    self.prev_visited.append(element.faz)
             side_count += 1
 
         # Draw arrows / connections
@@ -103,7 +113,7 @@ class ProPlanG:
         origin_coords = self.main_canvas.coords(origin.name)
         target_coords = self.main_canvas.coords(target.name)
 
-        if origin.is_critical():
+        if origin.is_critical(target):
             color = "red"
         else:
             color = "black"
@@ -197,13 +207,16 @@ class ProPlanG:
             with open(save_path, "r") as file:
                 json_process_data = json.load(file)
 
+            # sort processes in json if they are not ordered
+            process_list = sorted(json_process_data["Prozesse"], key=lambda k: k['id'])
+
             # Iterate over the json process data
-            for element in json_process_data.get("Prozesse"):
+            for element in process_list:
                 # Create a new process object for each data set, append all to list
                 self.process_data.append(ProcessXT(element.get("id"), element.get("name"), element.get("duration")))
 
             # Iterate over the json process data
-            for element in json_process_data.get("Prozesse"):
+            for element in process_list:
                 # Iterate over the list of successors
                 for single_successor in element.get("successor"):
                     # Append the current successor (as obj) to the current data set (as obj)

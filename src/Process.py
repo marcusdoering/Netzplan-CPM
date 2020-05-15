@@ -19,6 +19,8 @@ class Process:
         # Leere List-Variablen, vergleichbar mit ArrayLists in Java
         self.predecessor = []
         self.successor = []
+        # gui height
+        self.gui_height = None
 
     def get_id(self):
         """
@@ -113,13 +115,13 @@ class Process:
                     current_min = succ_element.saz
             self.sez = current_min
 
-    def is_critical(self):
+    def is_critical(self, target):
         """
         Gibt an, ob ein Prozess zum "kritischen Pfad" gehoert.
 
         :return: bool; je nachdem ob Prozess zum "kritischen Pfad" gehoert
         """
-        if self.gp == 0:
+        if self.gp == 0 and target.gp == 0:
             return True
         else:
             return False
