@@ -113,8 +113,10 @@ class ProPlanG:
                         self.prev_visited.append(element.faz)
                 # a process that acts as the exit for multiple processes
                 elif len(element.predecessor) > 1:
-                    lowest_gui_height = 9999
+                    # the first element is automatically the reference value
+                    lowest_gui_height = element.predecessor[0].gui_height
                     for pre_elements in element.predecessor:
+                        # replace reference value if a lower value is found
                         if pre_elements.gui_height < lowest_gui_height:
                             lowest_gui_height = pre_elements.gui_height
                     element.gui_height = lowest_gui_height
