@@ -1,7 +1,9 @@
-from tkinter import Tk, Canvas, Menu, filedialog, Scrollbar
-from PIL import ImageGrab
+from tkinter import Tk, Canvas, Menu, filedialog, Scrollbar, messagebox
+from PIL import ImageGrab, Image
 import json
+import io
 from src.ProcessXT import ProcessXT
+from pyscreenshot import grab
 
 
 class ProPlanG:
@@ -236,10 +238,6 @@ class ProPlanG:
         self.main_canvas.create_rectangle(inc_amount_side + 100, inc_amount_height + 70, inc_amount_side + 130, inc_amount_height + 100, tags=process.name)
         self.main_canvas.create_text(inc_amount_side + 115, inc_amount_height + 85, text=process.fp)
 
-    def move_process(self, process_tag: str, movement_x, movement_y):
-        self.main_canvas.move(process_tag, movement_x, movement_y)
-        self.main_canvas.update()
-
     def insert_new_process(self, side_count, height_count, process):
         """
         Handle inserting a new process and update the canvas element
@@ -251,7 +249,6 @@ class ProPlanG:
         :return: None
         """
         self.draw_empty_process(side_count, height_count, process)
-        self.main_canvas.update()
 
     @staticmethod
     def open_file():
@@ -266,6 +263,10 @@ class ProPlanG:
         if save_path and save_path.endswith("json"):
             return save_path
         else:
+            messagebox.showerror(
+                "Fehler",
+                "Die Eingabedatei muss eine json-Datei sein."
+            )
             return None
 
     @staticmethod
@@ -276,7 +277,8 @@ class ProPlanG:
         :return: The path where to save the file or None if the dialogue was interrupted.
         """
         save_path = filedialog.asksaveasfilename(
-            title="Speicherort auswaehlen..."
+            title="Speicherort auswaehlen...",
+            defaultextension='.png'
         )
         if save_path:
             return save_path
@@ -294,30 +296,50 @@ class ProPlanG:
         :return: None
         """
         save_path = self.open_file()
+        prev_ids = []
 
         if save_path is not None:
             with open(save_path, "r") as file:
+                # set window name to json file name
+                self.root.title(save_path.split("/")[-1] + " - ProPlanG")
+                # reset previous data
                 self.reset_data()
-                json_process_data = json.load(file)
 
-            # sort processes in json if they are not ordered
-            process_list = sorted(json_process_data["Prozesse"], key=lambda k: k['id'])
+                json_process_data = None
+                try:
+                    json_process_data = json.load(file)
+                except json.decoder.JSONDecodeError:
+                    messagebox.showerror(
+                        "Fehler",
+                        "Die angegebene json-Datei ist nicht gültig."
+                    )
 
-            # Iterate over the json process data
-            for element in process_list:
-                # Create a new process object for each data set, append all to list
-                self.process_data.append(ProcessXT(element.get("id"), element.get("name"), element.get("duration")))
+            if json_process_data is not None:
+                # sort processes in json if they are not ordered
+                process_list = sorted(json_process_data["Prozesse"], key=lambda k: k['id'])
 
-            # Iterate over the json process data
-            for element in process_list:
-                # Iterate over the list of successors
-                for single_successor in element.get("successor"):
-                    # Append the current successor (as obj) to the current data set (as obj)
-                    self.process_data[element.get("id")].add_successor_and_predecessor(self.process_data[single_successor])
+                # Iterate over the json process data
+                for element in process_list:
+                    if element.get("id") not in prev_ids:
+                        # Create a new process object for each data set, append all to list
+                        self.process_data.append(ProcessXT(element.get("id"), element.get("name"), element.get("duration")))
+                        prev_ids.append(element.get("id"))
+                    else:
+                        messagebox.showerror(
+                            "Fehler",
+                            "Die Prozess-ID " + element.get("id") + " wird bereits für eine anderen Prozess verwendet.")
 
-        self.handle_process_calculation()
-        self.handle_process_drawing()
-        self.handle_arrow_drawing()
+                # Iterate over the json process data
+                for element in process_list:
+                    # Iterate over the list of successors
+                    for single_successor in element.get("successor"):
+                        # Append the current successor (as obj) to the current data set (as obj)
+                        self.process_data[element.get("id")].add_successor_and_predecessor(self.process_data[single_successor])
+
+            self.handle_process_calculation()
+            self.handle_process_drawing()
+            self.handle_arrow_drawing()
+            self.main_canvas.update()
 
     def reset_data(self):
         """
@@ -327,12 +349,8 @@ class ProPlanG:
         """
         self.process_data = []
         self.prev_visited = []
+        self.main_canvas.delete("all")
+        self.main_canvas.update()
 
     def save_as_png(self):
-        save_path = self.save_file()
-        x = self.root.winfo_rootx() + self.main_canvas.winfo_x()
-        y = self.root.winfo_rooty() + self.main_canvas.winfo_y()
-        x1 = x + self.main_canvas.winfo_width()
-        y1 = y + self.main_canvas.winfo_height()
-        # todo: this aint working yet
-        ImageGrab.grab().crop((x, y, x1, y1)).save(save_path)
+        print()

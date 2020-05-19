@@ -1,11 +1,11 @@
 class Process:
     def __init__(self, id: int, name: str, duration: int):
         """
-        Constructor-Funktion, welche beim Erstellen eines Objekts aufgerufen wird.
+        Constructor method which is called when an object is created.
 
-        :param id: Die ID eines Prozesses
-        :param name: Name eines Prozesses
-        :param duration: Dauer bzw Laenge eines Prozesses
+        :param id: Process ID
+        :param name: Process name
+        :param duration: Duration of the process
         """
         self.faz = None
         self.fez = None
@@ -16,17 +16,17 @@ class Process:
         self.duration = duration
         self.gp = None
         self.fp = None
-        # Leere List-Variablen, vergleichbar mit ArrayLists in Java
+        # Empty list variables, compare with Java ArrayList
         self.predecessor = []
         self.successor = []
-        # gui height
+        # Height level of the process
         self.gui_height = None
 
     def get_id(self):
         """
-        Getter-Methode.
+        Getter method.
 
-        :return: Die ID eines Prozesses
+        :return: Process ID
         """
         return self.id
 
@@ -35,9 +35,9 @@ class Process:
 
     def get_name(self):
         """
-        Getter-Methode.
+        Getter method.
 
-        :return: Den Namen eines Prozesses
+        :return: Process name
         """
         return self.name
 
@@ -46,9 +46,9 @@ class Process:
 
     def get_dauer(self):
         """
-        Getter-Methode.
+        Getter method.
 
-        :return: Die Dauer eines Prozesses
+        :return: Process duration
         """
         return self.duration
 
@@ -57,8 +57,8 @@ class Process:
 
     def calc_fez(self):
         """
-        Berechnet den FEZ des Prozesses oder gibt einen angepassten Wert zurueck,
-        falls es sich um den Startprozess handelt.
+        Calculate the FEZ of a process.
+        If the process is the start process the value equals the duration.
 
         :return: none
         """
@@ -71,8 +71,8 @@ class Process:
 
     def calc_faz(self):
         """
-        Berechnet den FAZ des Prozesses oder gibt 0 zurueck, falls es sich um
-        den Startprozess handelt.
+        Calculate the FAZ of a process.
+        If the process is the start process the value equal 0.
 
         :return: none
         """
@@ -87,7 +87,8 @@ class Process:
 
     def calc_saz(self):
         """
-        Berechnet den SAZ des Prozesses. Der SEZ muss dazu gegeben sein.
+        Calculate the SAZ of a process.
+        The SEZ is required for this calculation.
 
         :return: none
         """
@@ -98,8 +99,8 @@ class Process:
 
     def calc_sez(self):
         """
-        Berechnet den SEZ des Prozesses or gibt den FEZ zurueck, wenn es sich um
-        den Endprozess handelt.
+        Calculate the SEZ of a process.
+        If the process is the end process the value equals the FEZ.
 
         :return: none
         """
@@ -117,9 +118,9 @@ class Process:
 
     def is_critical(self, target):
         """
-        Gibt an, ob ein Prozess zum "kritischen Pfad" gehoert.
+        Determine if the given process is part of the "critical path".
 
-        :return: bool; je nachdem ob Prozess zum "kritischen Pfad" gehoert
+        :return: bool; depending on if the process is part of the "critical path"
         """
         if self.gp == 0 and target.gp == 0:
             return True
@@ -128,30 +129,30 @@ class Process:
 
     def add_predecessor(self, process):
         """
-        Fuegt einen Prozess der Liste der vorhergehenden Prozesse hinzu.
+        Adds a process to the list of following processes.
 
-        :param process: Prozess, welcher der Liste hinzugefuegt wird
+        :param process: Process to be added
         :return: none
         """
         self.predecessor.append(process)
 
     def add_successor(self, process):
         """
-        Fuegt eine Prozess der Liste der nachfolgenden Prozesse hinzu.
+        Adds a process to the list of previous processes.
 
-        :param process: Prozess, welcher der Liste hinzugefuegt wird
+        :param process: Process to be added
         :return: none
         """
         self.successor.append(process)
 
     def add_successor_and_predecessor(self, process):
         """
-        Fuegt einen Prozess A der Liste der nachfolgenden Prozesse von Prozess B hinzu.
-        Prozess B wird danach der Liste der vorhergehenden Prozesse von Prozess A hinzugefuegt.
+        Adds a process A to the list of following processes of process B.
+        Afterwards add process B to the list of previous processes of process A.
 
-        Wurde der Prozess bereits hinzugefuegt, so wird keine Aenderung vorgenommen.
+        If the process has already been added no changes occur.
 
-        :param process: Prozess, welcher als Nachfolger eingetragen wird
+        :param process: Process to add as a following process.
         :return: none
         """
         if process not in self.successor:
@@ -159,24 +160,46 @@ class Process:
             process.add_predecessor(self)
 
     def is_predecessor(self, process):
+        """
+        Check if a process is part of another processes predecessors.
+
+        :param process: Process to check if it's a predecessor
+        :return: bool, whether or not the process is a predecessor
+        """
         if process.id in self.predecessor:
             return True
         else:
             return False
 
     def is_successor(self, process):
+        """
+        Check if aprocess is part of another processes successors.
+
+        :param process: Process to check if it's a successor
+        :return: bool, whether or not the process is a successor
+        """
         if process.id in self.successor:
             return True
         else:
             return False
 
     def is_start_process(self):
+        """
+        Check if a process is the start process.
+
+        :return: bool, whether or not the process is the starting process.
+        """
         if len(self.predecessor) == 0:
             return True
         else:
             return False
 
     def is_end_process(self):
+        """
+        Check if a process is the ending process.
+
+        :return: bool, whether ot not the process is the ending process.
+        """
         if len(self.successor) == 0:
             return True
         else:
