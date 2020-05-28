@@ -1,11 +1,13 @@
-from tkinter import Tk, Canvas, Menu, filedialog, Scrollbar, messagebox, Toplevel, Button, Label, Entry, StringVar
+from tkinter import Tk, Canvas, Menu, filedialog, messagebox
 import json
-import io
 from src.ProcessXT import ProcessXT
 
 
 class ProPlanG:
     def __init__(self):
+        """
+        Constructor for the GUI.
+        """
         # Establish tkinter object
         self.root = Tk()
         self.top_root = None
@@ -13,7 +15,11 @@ class ProPlanG:
         self.process_data = []
         self.prev_visited = []
 
-        self._drag_data = {"x": 0, "y": 0, "item": None}
+        # data of the process that is currently being moved
+        # x and y are the coordinates, item is the tag of the object group
+        self.drag_x = 0
+        self.drag_y = 0
+        self.drag_item = None
 
         # Create Tkinter Menu (menubar on top, below window title)
         menubar = Menu(self.root)
@@ -25,11 +31,6 @@ class ProPlanG:
         menubar.add_command(label="About")
         # Filemenu content
         filemenu.add_command(label="Open...", command=self.read_config_file)
-        filemenu.add_command(label="Save...")
-
-        # scrollbar
-        x_scrollbar = Scrollbar(self.root, orient="horizontal")
-        y_scrollbar = Scrollbar(self.root, orient="vertical")
 
         # display the menu
         self.root.config(menu=menubar)
@@ -39,55 +40,69 @@ class ProPlanG:
             self.root,
             width=1000,
             height=500,
-            borderwidth=1,
-            scrollregion=(0, 0, 2000, 1000),
-            xscrollcommand=x_scrollbar.set,
-            yscrollcommand=y_scrollbar.set
+            borderwidth=1
         )
 
+        # bind mouse buttons to the drag functions
         self.main_canvas.bind("<ButtonPress-1>", self.drag_start)
         self.main_canvas.bind("<ButtonRelease-1>", self.drag_stop)
         self.main_canvas.bind("<B1-Motion>", self.drag)
 
-        # enable actual scrolling
-        x_scrollbar.config(command=self.main_canvas.xview)
-        y_scrollbar.config(command=self.main_canvas.yview)
-
         # place widgets in grid
-        self.main_canvas.grid(row=1, column=0)
-        x_scrollbar.grid(row=2, column=0, sticky="E" + "W")
-        y_scrollbar.grid(row=1, column=1, sticky="N" + "S")
+        self.main_canvas.pack(fill="both", expand=True)
 
+        # start the gui
         self.root.mainloop()
 
     def drag_start(self, event):
-        """Begining drag of an object"""
-        # record the item and its location
-        print(self.main_canvas.find_closest(event.x, event.y)[0])
-        print(self.main_canvas.gettags(self.main_canvas.find_closest(event.x, event.y))[0])
-        self._drag_data["item"] = self.main_canvas.gettags(self.main_canvas.find_closest(event.x, event.y))[0]
-        self._drag_data["x"] = event.x
-        self._drag_data["y"] = event.y
+        """
+        Begin the dragging of an object (or group of objects) on the canvas.
+        Function is called when the user holds down the mouse button.
+
+        :param event: Event data of where the mouse cursor is.
+        :return: None
+        """
+        # find the closest process, then get the data of this process
+        self.drag_item = self.main_canvas.gettags(self.main_canvas.find_closest(event.x, event.y))[0]
+
+        self.drag_x = event.x
+        self.drag_y = event.y
 
     def drag_stop(self, event):
-        """End drag of an object"""
+        """
+        Stop the dragging of an object (or group of objects) on the canvas.
+        Function is called when the user releases the mouse button.
+
+        The event parameter is not used in the function but is still required as
+        the function is called by a bind event.
+
+        :param event: Event data of where the mouse cursor is.
+        :return: None
+        """
         # reset the drag information
-        self._drag_data["item"] = None
-        self._drag_data["x"] = 0
-        self._drag_data["y"] = 0
-        # todo: redraw arrows
+        self.drag_item = None
+        self.drag_x = 0
+        self.drag_y = 0
+        # redraw the arrows using new positioning
         self.handle_arrow_drawing()
 
     def drag(self, event):
-        """Handle dragging of an object"""
-        # compute how much the mouse has moved
-        delta_x = event.x - self._drag_data["x"]
-        delta_y = event.y - self._drag_data["y"]
-        # move the object the appropriate amount
-        self.main_canvas.move(self._drag_data["item"], delta_x, delta_y)
-        # record the new position
-        self._drag_data["x"] = event.x
-        self._drag_data["y"] = event.y
+        """
+        Perform the position change of an object (or group of objects) on the canvas.
+        Function is called when the user moves the mouse while holding / dragging object(s).
+        The new position is constantly saved so that multiple movements are possible.
+
+        :param event: Event data of where the mouse cursor is.
+        :return: None
+        """
+        # check how far the mouse moved
+        new_pos_x = event.x - self.drag_x
+        new_pos_y = event.y - self.drag_y
+        # move the object(s)
+        self.main_canvas.move(self.drag_item, new_pos_x, new_pos_y)
+        # save the new position for next calculation
+        self.drag_x = event.x
+        self.drag_y = event.y
 
     def handle_process_calculation(self):
         """
@@ -191,48 +206,44 @@ class ProPlanG:
         else:
             color = "black"
 
-        # same height, one straight line:
-        if origin.gui_height == target.gui_height:
-            self.main_canvas.create_line(
-                origin_coords[0] + 75,
-                origin_coords[1] + 45,
-                target_coords[0] - 15,
-                target_coords[1] + 45,
-                arrow="last",
-                fill=color,
-                tags=(origin.name + "_arrow", "arrow"))
-        # different height, three lines (as a curve):
-        else:
-            # if difference is positive: arrow moves down
-            # if difference is negative: arrow moves up
-            difference = target.gui_height - origin.gui_height
-            # x: 10 out
-            self.main_canvas.create_line(
-                origin_coords[0] + 75,
-                origin_coords[1] + 45,
-                origin_coords[0] + 95,
-                origin_coords[1] + 45,
-                arrow=None,
-                fill=color,
-                tags=(origin.name + "_arrow", "arrow"))
-            # y: 130 up / down
-            self.main_canvas.create_line(
-                origin_coords[0] + 95,
-                origin_coords[1] + 45,
-                origin_coords[0] + 95,
-                origin_coords[1] + 45 + 130 * difference,
-                arrow=None,
-                fill=color,
-                tags=(origin.name + "_arrow", "arrow"))
-            # x: connect with target
-            self.main_canvas.create_line(
-                origin_coords[0] + 95,
-                origin_coords[1] + 45 + 130 * difference,
-                target_coords[0] - 15,
-                target_coords[1] + 45,
-                arrow="last",
-                fill=color,
-                tags=(origin.name + "_arrow", "arrow"))
+        # reference positions
+        origin_ref_x = origin_coords[0] + 75
+        origin_ref_y = origin_coords[1] + 45
+        target_ref_x = target_coords[0] - 15
+        target_ref_y = target_coords[1] + 45
+
+        # distance from origin until line splits
+        split_distance_x = (target_ref_x - origin_ref_x) / 2
+
+        # x: out from origin
+        self.main_canvas.create_line(
+            origin_ref_x,
+            origin_ref_y,
+            origin_ref_x + split_distance_x,
+            origin_ref_y,
+            arrow=None,
+            fill=color,
+            tags=(origin.name + "_arrow", "arrow"))
+
+        # y: up / down
+        self.main_canvas.create_line(
+            origin_ref_x + split_distance_x,
+            origin_ref_y,
+            target_ref_x - split_distance_x,
+            target_ref_y,
+            arrow=None,
+            fill=color,
+            tags=(origin.name + "_arrow", "arrow"))
+
+        # x: connect with target
+        self.main_canvas.create_line(
+            target_ref_x - split_distance_x,
+            target_ref_y,
+            target_ref_x,
+            target_ref_y,
+            arrow="last",
+            fill=color,
+            tags=(origin.name + "_arrow", "arrow"))
 
         self.main_canvas.update()
 
@@ -255,30 +266,105 @@ class ProPlanG:
         inc_amount_height = height_count * 130
         # for the outer values
         # top left
-        self.main_canvas.create_text(inc_amount_side + 55, inc_amount_height + 25, text=process.faz, tags=process.name)
+        self.main_canvas.create_text(
+            inc_amount_side + 55,
+            inc_amount_height + 25,
+            text=process.faz,
+            tags=process.name
+        )
         # bot left
-        self.main_canvas.create_text(inc_amount_side + 55, inc_amount_height + 115, text=process.saz, tags=process.name)
+        self.main_canvas.create_text(
+            inc_amount_side + 55,
+            inc_amount_height + 115,
+            text=process.saz,
+            tags=process.name
+        )
         # top right
-        self.main_canvas.create_text(inc_amount_side + 115, inc_amount_height + 25, text=process.fez, tags=process.name)
+        self.main_canvas.create_text(
+            inc_amount_side + 115,
+            inc_amount_height + 25,
+            text=process.fez,
+            tags=process.name
+        )
         # bot right
-        self.main_canvas.create_text(inc_amount_side + 115, inc_amount_height + 115, text=process.sez, tags=process.name)
+        self.main_canvas.create_text(
+            inc_amount_side + 115,
+            inc_amount_height + 115,
+            text=process.sez,
+            tags=process.name
+        )
 
         # for the inner values
         # top left
-        self.main_canvas.create_rectangle(inc_amount_side + 40, inc_amount_height + 40, inc_amount_side + 70, inc_amount_height + 70, tags=process.name)
-        self.main_canvas.create_text(inc_amount_side + 55, inc_amount_height + 55, text=process.id, tags=process.name)
+        self.main_canvas.create_rectangle(
+            inc_amount_side + 40,
+            inc_amount_height + 40,
+            inc_amount_side + 70,
+            inc_amount_height + 70,
+            tags=process.name
+        )
+        self.main_canvas.create_text(
+            inc_amount_side + 55,
+            inc_amount_height + 55,
+            text=process.id,
+            tags=process.name
+        )
         # bot left
-        self.main_canvas.create_rectangle(inc_amount_side + 40, inc_amount_height + 70, inc_amount_side + 70, inc_amount_height + 100, tags=process.name)
-        self.main_canvas.create_text(inc_amount_side + 55, inc_amount_height + 85, text=process.duration, tags=process.name)
+        self.main_canvas.create_rectangle(
+            inc_amount_side + 40,
+            inc_amount_height + 70,
+            inc_amount_side + 70,
+            inc_amount_height + 100,
+            tags=process.name
+        )
+        self.main_canvas.create_text(
+            inc_amount_side + 55,
+            inc_amount_height + 85,
+            text=process.duration,
+            tags=process.name
+        )
         # bot mid
-        self.main_canvas.create_rectangle(inc_amount_side + 70, inc_amount_height + 70, inc_amount_side + 100, inc_amount_height + 100, tags=process.name)
-        self.main_canvas.create_text(inc_amount_side + 85, inc_amount_height + 85, text=process.gp, tags=process.name)
+        self.main_canvas.create_rectangle(
+            inc_amount_side + 70,
+            inc_amount_height + 70,
+            inc_amount_side + 100,
+            inc_amount_height + 100,
+            tags=process.name
+        )
+        self.main_canvas.create_text(
+            inc_amount_side + 85,
+            inc_amount_height + 85,
+            text=process.gp,
+            tags=process.name
+        )
         # top right
-        self.main_canvas.create_rectangle(inc_amount_side + 70, inc_amount_height + 40, inc_amount_side + 130, inc_amount_height + 70, tags=process.name)
-        self.main_canvas.create_text(inc_amount_side + 85, inc_amount_height + 55, text=process.name, tags=process.name)
+        self.main_canvas.create_rectangle(
+            inc_amount_side + 70,
+            inc_amount_height + 40,
+            inc_amount_side + 130,
+            inc_amount_height + 70,
+            tags=process.name
+        )
+        self.main_canvas.create_text(
+            inc_amount_side + 85,
+            inc_amount_height + 55,
+            text=process.name,
+            tags=process.name
+        )
         # bot right
-        self.main_canvas.create_rectangle(inc_amount_side + 100, inc_amount_height + 70, inc_amount_side + 130, inc_amount_height + 100, tags=process.name)
-        self.main_canvas.create_text(inc_amount_side + 115, inc_amount_height + 85, text=process.fp, tags=process.name)
+        self.main_canvas.create_rectangle(
+            inc_amount_side + 100,
+            inc_amount_height + 70,
+            inc_amount_side + 130,
+            inc_amount_height + 100,
+            tags=process.name
+        )
+        self.main_canvas.create_text(
+            inc_amount_side + 115,
+            inc_amount_height + 85,
+            text=process.fp,
+            tags=process.name
+        )
 
     def insert_new_process(self, side_count, height_count, process):
         """
@@ -309,21 +395,6 @@ class ProPlanG:
                 "Fehler",
                 "Die Eingabedatei muss eine json-Datei sein."
             )
-            return None
-
-    @staticmethod
-    def save_file():
-        """
-        Open a dialogue that asks the user where to save a file.
-
-        :return: The path where to save the file or None if the dialogue was interrupted.
-        """
-        save_path = filedialog.asksaveasfilename(
-            title="Speicherort auswaehlen..."
-        )
-        if save_path:
-            return save_path
-        else:
             return None
 
     def read_config_file(self):
