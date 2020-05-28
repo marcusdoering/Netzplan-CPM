@@ -1,75 +1,66 @@
 {
     "Prozesse": [
         {
-            "id": 0,
+            "id": 1,
             "name": "Start",
             "duration": 0,
             "successor": [
-                1
-            ]
-        },
-        {
-            "id": 1,
-            "name": "Konfiguration_klaeren",
-            "duration": 1,
-            "successor": [
-                2,
-                4
+                2
             ]
         },
         {
             "id": 2,
-            "name": "Konfiguration_waehlen",
-            "duration": 3,
+            "name": "Konfiguration klaeren",
+            "duration": 1,
             "successor": [
-                3
+                3,
+                5
             ]
         },
         {
             "id": 3,
-            "name": "Inbetriebnahme",
-            "duration": 4,
+            "name": "Konfiguration waehlen",
+            "duration": 3,
             "successor": [
-                5
+                4
             ]
         },
         {
             "id": 4,
-            "name": "Arbeitskraefte_organisieren",
-            "duration": 1,
+            "name": "Inbetriebnahme",
+            "duration": 4,
             "successor": [
-                5
+                6
             ]
         },
         {
             "id": 5,
-            "name": "Materialbeschaffung",
-            "duration": 2,
+            "name": "Arbeitskraefte organisieren",
+            "duration": 1,
             "successor": [
-                6, 7
+                6
             ]
         },
         {
             "id": 6,
-            "name": "Montage_vorbereiten",
-            "duration": 1,
+            "name": "Materialbeschaffung",
+            "duration": 2,
             "successor": [
-                8
+                7, 8
             ]
         },
         {
             "id": 7,
-            "name": "Festplatte_spiegeln_C1",
+            "name": "Montage vorbereiten",
             "duration": 1,
             "successor": [
-                8,
-                10
+                9
             ]
         },
         {
             "id": 8,
-            "name": "Montage_C1",
-            "duration": 2,
+            "name": "Festplatte spiegeln C1",
+            "duration": 1,
             "successor": [
                 9,
                 11
@@ -77,25 +68,25 @@
         },
         {
             "id": 9,
-            "name": "Verpacken_C1",
-            "duration": 1,
+            "name": "Montage C1",
+            "duration": 2,
             "successor": [
-                16
+                10,
+                12
             ]
         },
         {
             "id": 10,
-            "name": "Festplatte_spiegeln_C2",
+            "name": "Verpacken C1",
             "duration": 1,
             "successor": [
-                11,
-                13
+                17
             ]
         },
         {
             "id": 11,
-            "name": "Montage_C2",
-            "duration": 2,
+            "name": "Festplatte spiegeln C2",
+            "duration": 1,
             "successor": [
                 12,
                 14
@@ -103,46 +94,55 @@
         },
         {
             "id": 12,
-            "name": "Verpacken_C2",
-            "duration": 1,
+            "name": "Montage C2",
+            "duration": 2,
             "successor": [
-                16
+                13,
+                15
             ]
         },
         {
             "id": 13,
-            "name": "Festplatte_spiegeln_C3",
-            "duration": 8,
+            "name": "Verpacken C2",
+            "duration": 1,
             "successor": [
-                14
+                17
             ]
         },
         {
             "id": 14,
-            "name": "Montage_C3",
-            "duration": 16,
+            "name": "Festplatte spiegeln C3",
+            "duration": 8,
             "successor": [
                 15
             ]
         },
         {
             "id": 15,
-            "name": "Verpacken_C3",
-            "duration": 8,
+            "name": "Montage C3",
+            "duration": 16,
             "successor": [
                 16
             ]
         },
         {
             "id": 16,
-            "name": "Auslieferung",
-            "duration": 2,
+            "name": "Verpacken C3",
+            "duration": 8,
             "successor": [
                 17
             ]
         },
         {
             "id": 17,
+            "name": "Auslieferung",
+            "duration": 2,
+            "successor": [
+                18
+            ]
+        },
+        {
+            "id": 18,
             "name": "Ende",
             "duration": 0,
             "successor": []

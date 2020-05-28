@@ -1,4 +1,4 @@
-from tkinter import Tk, Canvas, Menu, filedialog, messagebox
+from tkinter import Tk, Canvas, Menu, filedialog, messagebox, Scrollbar
 import json
 from ProcessXT import ProcessXT
 
@@ -31,6 +31,10 @@ class ProPlanG:
         # Filemenu content
         filemenu.add_command(label="Open...", command=self.read_config_file)
 
+        # scrollbar
+        x_scrollbar = Scrollbar(self.root, orient="horizontal")
+        y_scrollbar = Scrollbar(self.root, orient="vertical")
+
         # display the menu
         self.root.config(menu=menubar)
 
@@ -39,8 +43,15 @@ class ProPlanG:
             self.root,
             width=1000,
             height=500,
-            borderwidth=1
+            borderwidth=1,
+            scrollregion=(0, 0, 2000, 1000),
+            xscrollcommand=x_scrollbar.set,
+            yscrollcommand=y_scrollbar.set
         )
+
+        # enable actual scrolling
+        x_scrollbar.config(command=self.main_canvas.xview)
+        y_scrollbar.config(command=self.main_canvas.yview)
 
         # bind mouse buttons to the drag functions
         self.main_canvas.bind("<ButtonPress-1>", self.drag_start)
@@ -49,6 +60,7 @@ class ProPlanG:
 
         # place widgets in grid
         self.main_canvas.pack(fill="both", expand=True)
+        x_scrollbar.pack(fill="both", anchor="s")
 
         # start the gui
         self.root.mainloop()
@@ -62,10 +74,13 @@ class ProPlanG:
         :return: None
         """
         # find the closest process, then get the data of this process
-        self.drag_item = self.main_canvas.gettags(self.main_canvas.find_closest(event.x, event.y))[0]
+        self.drag_item = self.main_canvas.gettags(self.main_canvas.find_closest(
+            self.main_canvas.canvasx(event.x),
+            self.main_canvas.canvasy(event.y))
+        )[0]
 
-        self.drag_x = event.x
-        self.drag_y = event.y
+        self.drag_x = self.main_canvas.canvasx(event.x)
+        self.drag_y = self.main_canvas.canvasy(event.y)
 
     def drag_stop(self, event):
         """
@@ -95,13 +110,13 @@ class ProPlanG:
         :return: None
         """
         # check how far the mouse moved
-        new_pos_x = event.x - self.drag_x
-        new_pos_y = event.y - self.drag_y
+        new_pos_x = self.main_canvas.canvasx(event.x) - self.drag_x
+        new_pos_y = self.main_canvas.canvasy(event.y) - self.drag_y
         # move the object(s)
         self.main_canvas.move(self.drag_item, new_pos_x, new_pos_y)
         # save the new position for next calculation
-        self.drag_x = event.x
-        self.drag_y = event.y
+        self.drag_x = self.main_canvas.canvasx(event.x)
+        self.drag_y = self.main_canvas.canvasy(event.y)
 
     def handle_process_calculation(self):
         """
@@ -197,8 +212,8 @@ class ProPlanG:
         :param target: The target process to draw the arrow to.
         :return: None
         """
-        origin_coords = self.main_canvas.coords(origin.name)
-        target_coords = self.main_canvas.coords(target.name)
+        origin_coords = self.main_canvas.coords(origin.name.replace(" ", "_"))
+        target_coords = self.main_canvas.coords(target.name.replace(" ", "_"))
 
         if origin.is_critical(target):
             color = "red"
@@ -345,7 +360,7 @@ class ProPlanG:
             tags=process.name.replace(" ", "_")
         )
         self.main_canvas.create_text(
-            inc_amount_side + 85,
+            inc_amount_side + 100,
             inc_amount_height + 55,
             text=process.name,
             tags=process.name.replace(" ", "_")
@@ -440,15 +455,15 @@ class ProPlanG:
                             "Fehler",
                             "Die Prozess-ID " + element.get("id") + " wird bereits für eine anderen Prozess verwendet.")
 
+                # the starting id used to adjust following function calls
+                id_offset = self.process_data[0].id
+
                 # Iterate over the json process data
                 for element in process_list:
                     # Iterate over the list of successors
                     for single_successor in element.get("successor"):
                         # Append the current successor (as obj) to the current data set (as obj)
-                        print(self.process_data[element.get("id")].name)
-
-                        print(self.process_data[single_successor].name)
-                        self.process_data[element.get("id")].add_successor_and_predecessor(self.process_data[single_successor])
+                        self.process_data[element.get("id") - id_offset].add_successor_and_predecessor(self.process_data[single_successor - id_offset])
 
             self.handle_process_calculation()
             self.handle_process_drawing()
