@@ -222,7 +222,7 @@ class ProPlanG:
             origin_ref_y,
             arrow=None,
             fill=color,
-            tags=(origin.name + "_arrow", "arrow"))
+            tags=(origin.name.replace(" ", "_") + "_arrow", "arrow"))
 
         # y: up / down
         self.main_canvas.create_line(
@@ -232,7 +232,7 @@ class ProPlanG:
             target_ref_y,
             arrow=None,
             fill=color,
-            tags=(origin.name + "_arrow", "arrow"))
+            tags=(origin.name.replace(" ", "_") + "_arrow", "arrow"))
 
         # x: connect with target
         self.main_canvas.create_line(
@@ -242,7 +242,7 @@ class ProPlanG:
             target_ref_y,
             arrow="last",
             fill=color,
-            tags=(origin.name + "_arrow", "arrow"))
+            tags=(origin.name.replace(" ", "_") + "_arrow", "arrow"))
 
         self.main_canvas.update()
 
@@ -269,28 +269,28 @@ class ProPlanG:
             inc_amount_side + 55,
             inc_amount_height + 25,
             text=process.faz,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         # bot left
         self.main_canvas.create_text(
             inc_amount_side + 55,
             inc_amount_height + 115,
             text=process.saz,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         # top right
         self.main_canvas.create_text(
             inc_amount_side + 115,
             inc_amount_height + 25,
             text=process.fez,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         # bot right
         self.main_canvas.create_text(
             inc_amount_side + 115,
             inc_amount_height + 115,
             text=process.sez,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
 
         # for the inner values
@@ -300,13 +300,13 @@ class ProPlanG:
             inc_amount_height + 40,
             inc_amount_side + 70,
             inc_amount_height + 70,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         self.main_canvas.create_text(
             inc_amount_side + 55,
             inc_amount_height + 55,
             text=process.id,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         # bot left
         self.main_canvas.create_rectangle(
@@ -314,13 +314,13 @@ class ProPlanG:
             inc_amount_height + 70,
             inc_amount_side + 70,
             inc_amount_height + 100,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         self.main_canvas.create_text(
             inc_amount_side + 55,
             inc_amount_height + 85,
             text=process.duration,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         # bot mid
         self.main_canvas.create_rectangle(
@@ -328,13 +328,13 @@ class ProPlanG:
             inc_amount_height + 70,
             inc_amount_side + 100,
             inc_amount_height + 100,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         self.main_canvas.create_text(
             inc_amount_side + 85,
             inc_amount_height + 85,
             text=process.gp,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         # top right
         self.main_canvas.create_rectangle(
@@ -342,13 +342,13 @@ class ProPlanG:
             inc_amount_height + 40,
             inc_amount_side + 130,
             inc_amount_height + 70,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         self.main_canvas.create_text(
             inc_amount_side + 85,
             inc_amount_height + 55,
             text=process.name,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         # bot right
         self.main_canvas.create_rectangle(
@@ -356,13 +356,13 @@ class ProPlanG:
             inc_amount_height + 70,
             inc_amount_side + 130,
             inc_amount_height + 100,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         self.main_canvas.create_text(
             inc_amount_side + 115,
             inc_amount_height + 85,
             text=process.fp,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
 
     def insert_new_process(self, side_count, height_count, process):
@@ -445,6 +445,9 @@ class ProPlanG:
                     # Iterate over the list of successors
                     for single_successor in element.get("successor"):
                         # Append the current successor (as obj) to the current data set (as obj)
+                        print(self.process_data[element.get("id")].name)
+
+                        print(self.process_data[single_successor].name)
                         self.process_data[element.get("id")].add_successor_and_predecessor(self.process_data[single_successor])
 
             self.handle_process_calculation()
