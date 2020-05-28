@@ -1,4 +1,4 @@
-from src.Process import Process
+from Process import Process
 
 
 class ProcessXT(Process):
