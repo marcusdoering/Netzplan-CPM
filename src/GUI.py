@@ -1,5 +1,6 @@
 from tkinter import Tk, Canvas, Menu, filedialog, messagebox, Scrollbar
 import json
+from math import ceil
 from ProcessXT import ProcessXT
 
 
@@ -109,14 +110,16 @@ class ProPlanG:
         :param event: Event data of where the mouse cursor is.
         :return: None
         """
-        # check how far the mouse moved
-        new_pos_x = self.main_canvas.canvasx(event.x) - self.drag_x
-        new_pos_y = self.main_canvas.canvasy(event.y) - self.drag_y
-        # move the object(s)
-        self.main_canvas.move(self.drag_item, new_pos_x, new_pos_y)
-        # save the new position for next calculation
-        self.drag_x = self.main_canvas.canvasx(event.x)
-        self.drag_y = self.main_canvas.canvasy(event.y)
+        # do not allow dragging of arrows (as they will reposition anyways)
+        if "arrow" not in self.main_canvas.gettags(self.drag_item):
+            # check how far the mouse moved
+            new_pos_x = self.main_canvas.canvasx(event.x) - self.drag_x
+            new_pos_y = self.main_canvas.canvasy(event.y) - self.drag_y
+            # move the object(s)
+            self.main_canvas.move(self.drag_item, new_pos_x, new_pos_y)
+            # save the new position for next calculation
+            self.drag_x = self.main_canvas.canvasx(event.x)
+            self.drag_y = self.main_canvas.canvasy(event.y)
 
     def handle_process_calculation(self):
         """
@@ -359,10 +362,23 @@ class ProPlanG:
             inc_amount_height + 70,
             tags=process.name.replace(" ", "_")
         )
+
+        # amount of rows
+        val = ceil(len(process.name) / 11)
+        # the amount of rows determines how big the text is (to make sure it fits in the box)
+        if val == 1:
+            font_size = 10
+        elif val == 2:
+            font_size = 8
+        else:
+            font_size = 7
+
         self.main_canvas.create_text(
             inc_amount_side + 100,
             inc_amount_height + 55,
             text=process.name,
+            width=60,
+            font=("Arial", font_size),
             tags=process.name.replace(" ", "_")
         )
         # bot right
