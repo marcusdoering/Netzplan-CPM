@@ -1,0 +1,43 @@
+{
+  "Prozesse": [
+    {
+      "id": 0,
+      "name": "Start",
+      "duration": 0,
+      "successor": [
+        1
+      ]
+    },
+	{
+      "id": 1,
+      "name": "A1",
+      "duration": 1,
+      "successor": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": 2,
+      "name": "B1",
+      "duration": 1,
+      "successor": [
+        4
+      ]
+    },
+	{
+      "id": 3,
+      "name": "B2",
+      "duration": 3,
+      "successor": [
+        4
+      ]
+    },
+    {
+      "id": 4,
+      "name": "End",
+      "duration": 0,
+      "successor": []
+    }
+  ]
+}

@@ -1,5 +1,7 @@
-from tkinter import Tk, Canvas, Menu, filedialog, messagebox
+from tkinter import Tk, Canvas, Menu, filedialog, messagebox, Scrollbar, BooleanVar
+from tkinter.ttk import Sizegrip
 import json
+from math import ceil
 from ProcessXT import ProcessXT
 
 
@@ -10,7 +12,6 @@ class ProPlanG:
         """
         # Establish tkinter object
         self.root = Tk()
-        self.top_root = None
         self.root.title("ProPlanG")
         self.process_data = []
         self.prev_visited = []
@@ -25,11 +26,24 @@ class ProPlanG:
         menubar = Menu(self.root)
         # Create pulldown menu (set tearoff=0 to disable detaching the menu)
         filemenu = Menu(menubar, tearoff=0)
+        debugmenu = Menu(menubar, tearoff=0)
 
         # Menu content
         menubar.add_cascade(label="File", menu=filemenu)
+        menubar.add_cascade(label="Settings", menu=debugmenu)
         # Filemenu content
         filemenu.add_command(label="Open...", command=self.read_config_file)
+        # Debugmenu content
+        self.detailed_arrow = BooleanVar(self.root, False)
+        debugmenu.add_checkbutton(label="Show detailed arrows", variable=self.detailed_arrow, command=self.handle_arrow_drawing)
+        self.arrow_split = BooleanVar(self.root, False)
+        debugmenu.add_checkbutton(label="Directly connect arrows", variable=self.arrow_split, command=self.handle_arrow_drawing)
+
+        # scrollbar
+        x_scrollbar = Scrollbar(self.root, orient="horizontal")
+        y_scrollbar = Scrollbar(self.root, orient="vertical")
+        # sizegrip
+        sizegrip = Sizegrip(self.root)
 
         # display the menu
         self.root.config(menu=menubar)
@@ -39,8 +53,15 @@ class ProPlanG:
             self.root,
             width=1000,
             height=500,
-            borderwidth=1
+            borderwidth=1,
+            scrollregion=(0, 0, 2000, 1000),
+            xscrollcommand=x_scrollbar.set,
+            yscrollcommand=y_scrollbar.set
         )
+
+        # enable actual scrolling
+        x_scrollbar.config(command=self.main_canvas.xview)
+        y_scrollbar.config(command=self.main_canvas.yview)
 
         # bind mouse buttons to the drag functions
         self.main_canvas.bind("<ButtonPress-1>", self.drag_start)
@@ -48,7 +69,10 @@ class ProPlanG:
         self.main_canvas.bind("<B1-Motion>", self.drag)
 
         # place widgets in grid
-        self.main_canvas.pack(fill="both", expand=True)
+        x_scrollbar.pack(fill="x", side="bottom", expand=False)
+        y_scrollbar.pack(fill="y", side="right", expand=False)
+        sizegrip.pack(in_=x_scrollbar, side="bottom", anchor="se")
+        self.main_canvas.pack(fill="both", side="left", expand=True)
 
         # start the gui
         self.root.mainloop()
@@ -62,10 +86,13 @@ class ProPlanG:
         :return: None
         """
         # find the closest process, then get the data of this process
-        self.drag_item = self.main_canvas.gettags(self.main_canvas.find_closest(event.x, event.y))[0]
+        self.drag_item = self.main_canvas.gettags(self.main_canvas.find_closest(
+            self.main_canvas.canvasx(event.x),
+            self.main_canvas.canvasy(event.y))
+        )[0]
 
-        self.drag_x = event.x
-        self.drag_y = event.y
+        self.drag_x = self.main_canvas.canvasx(event.x)
+        self.drag_y = self.main_canvas.canvasy(event.y)
 
     def drag_stop(self, event):
         """
@@ -94,14 +121,16 @@ class ProPlanG:
         :param event: Event data of where the mouse cursor is.
         :return: None
         """
-        # check how far the mouse moved
-        new_pos_x = event.x - self.drag_x
-        new_pos_y = event.y - self.drag_y
-        # move the object(s)
-        self.main_canvas.move(self.drag_item, new_pos_x, new_pos_y)
-        # save the new position for next calculation
-        self.drag_x = event.x
-        self.drag_y = event.y
+        # do not allow dragging of arrows (as they will reposition anyways)
+        if "arrow" not in self.main_canvas.gettags(self.drag_item):
+            # check how far the mouse moved
+            new_pos_x = self.main_canvas.canvasx(event.x) - self.drag_x
+            new_pos_y = self.main_canvas.canvasy(event.y) - self.drag_y
+            # move the object(s)
+            self.main_canvas.move(self.drag_item, new_pos_x, new_pos_y)
+            # save the new position for next calculation
+            self.drag_x = self.main_canvas.canvasx(event.x)
+            self.drag_y = self.main_canvas.canvasy(event.y)
 
     def handle_process_calculation(self):
         """
@@ -197,8 +226,11 @@ class ProPlanG:
         :param target: The target process to draw the arrow to.
         :return: None
         """
-        origin_coords = self.main_canvas.coords(origin.name)
-        target_coords = self.main_canvas.coords(target.name)
+        adj_origin_name = origin.name.replace(" ", "_")
+        adj_target_name = target.name.replace(" ", "_")
+
+        origin_coords = self.main_canvas.coords(adj_origin_name)
+        target_coords = self.main_canvas.coords(adj_target_name)
 
         if origin.is_critical(target):
             color = "red"
@@ -214,35 +246,54 @@ class ProPlanG:
         # distance from origin until line splits
         split_distance_x = (target_ref_x - origin_ref_x) / 2
 
-        # x: out from origin
-        self.main_canvas.create_line(
-            origin_ref_x,
-            origin_ref_y,
-            origin_ref_x + split_distance_x,
-            origin_ref_y,
-            arrow=None,
-            fill=color,
-            tags=(origin.name + "_arrow", "arrow"))
+        # if debug is active all three lines end on arrows
+        if self.detailed_arrow.get():
+            adj_arrow_type = "last"
+        else:
+            adj_arrow_type = None
 
-        # y: up / down
-        self.main_canvas.create_line(
-            origin_ref_x + split_distance_x,
-            origin_ref_y,
-            target_ref_x - split_distance_x,
-            target_ref_y,
-            arrow=None,
-            fill=color,
-            tags=(origin.name + "_arrow", "arrow"))
+        # for debug
+        if self.arrow_split.get():
+            self.main_canvas.create_line(
+                origin_ref_x,
+                origin_ref_y,
+                target_ref_x,
+                target_ref_y,
+                arrow="last",
+                fill=color,
+                tags=(adj_origin_name + "_arrow", "arrow")
+            )
+        # for no debug
+        else:
+            # x: out from origin
+            self.main_canvas.create_line(
+                origin_ref_x,
+                origin_ref_y,
+                origin_ref_x + split_distance_x,
+                origin_ref_y,
+                arrow=adj_arrow_type,
+                fill=color,
+                tags=(adj_origin_name + "_arrow", "arrow"))
 
-        # x: connect with target
-        self.main_canvas.create_line(
-            target_ref_x - split_distance_x,
-            target_ref_y,
-            target_ref_x,
-            target_ref_y,
-            arrow="last",
-            fill=color,
-            tags=(origin.name + "_arrow", "arrow"))
+            # y: up / down
+            self.main_canvas.create_line(
+                origin_ref_x + split_distance_x,
+                origin_ref_y,
+                target_ref_x - split_distance_x,
+                target_ref_y,
+                arrow=adj_arrow_type,
+                fill=color,
+                tags=(adj_origin_name + "_arrow", "arrow"))
+
+            # x: connect with target
+            self.main_canvas.create_line(
+                target_ref_x - split_distance_x,
+                target_ref_y,
+                target_ref_x,
+                target_ref_y,
+                arrow="last",
+                fill=color,
+                tags=(adj_origin_name + "_arrow", "arrow"))
 
         self.main_canvas.update()
 
@@ -269,28 +320,28 @@ class ProPlanG:
             inc_amount_side + 55,
             inc_amount_height + 25,
             text=process.faz,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         # bot left
         self.main_canvas.create_text(
             inc_amount_side + 55,
             inc_amount_height + 115,
             text=process.saz,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         # top right
         self.main_canvas.create_text(
             inc_amount_side + 115,
             inc_amount_height + 25,
             text=process.fez,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         # bot right
         self.main_canvas.create_text(
             inc_amount_side + 115,
             inc_amount_height + 115,
             text=process.sez,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
 
         # for the inner values
@@ -300,13 +351,13 @@ class ProPlanG:
             inc_amount_height + 40,
             inc_amount_side + 70,
             inc_amount_height + 70,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         self.main_canvas.create_text(
             inc_amount_side + 55,
             inc_amount_height + 55,
             text=process.id,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         # bot left
         self.main_canvas.create_rectangle(
@@ -314,13 +365,13 @@ class ProPlanG:
             inc_amount_height + 70,
             inc_amount_side + 70,
             inc_amount_height + 100,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         self.main_canvas.create_text(
             inc_amount_side + 55,
             inc_amount_height + 85,
             text=process.duration,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         # bot mid
         self.main_canvas.create_rectangle(
@@ -328,13 +379,13 @@ class ProPlanG:
             inc_amount_height + 70,
             inc_amount_side + 100,
             inc_amount_height + 100,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         self.main_canvas.create_text(
             inc_amount_side + 85,
             inc_amount_height + 85,
             text=process.gp,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         # top right
         self.main_canvas.create_rectangle(
@@ -342,13 +393,26 @@ class ProPlanG:
             inc_amount_height + 40,
             inc_amount_side + 130,
             inc_amount_height + 70,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
+
+        # amount of rows
+        val = ceil(len(process.name) / 11)
+        # the amount of rows determines how big the text is (to make sure it fits in the box)
+        if val == 1:
+            font_size = 10
+        elif val == 2:
+            font_size = 8
+        else:
+            font_size = 7
+
         self.main_canvas.create_text(
-            inc_amount_side + 85,
+            inc_amount_side + 100,
             inc_amount_height + 55,
             text=process.name,
-            tags=process.name
+            width=60,
+            font=("Arial", font_size),
+            tags=process.name.replace(" ", "_")
         )
         # bot right
         self.main_canvas.create_rectangle(
@@ -356,13 +420,13 @@ class ProPlanG:
             inc_amount_height + 70,
             inc_amount_side + 130,
             inc_amount_height + 100,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
         self.main_canvas.create_text(
             inc_amount_side + 115,
             inc_amount_height + 85,
             text=process.fp,
-            tags=process.name
+            tags=process.name.replace(" ", "_")
         )
 
     def insert_new_process(self, side_count, height_count, process):
@@ -385,7 +449,8 @@ class ProPlanG:
         :return: The path to the file or None if the dialogue was interrupted.
         """
         save_path = filedialog.askopenfilename(
-            title="Konfigurationsdatei auswaehlen..."
+            title="Konfigurationsdatei auswaehlen...",
+            filetypes=(("json-Dateien", "*.json"), ("Alle Dateien", "*.*"))
         )
         if save_path and save_path.endswith("json"):
             return save_path
@@ -399,15 +464,11 @@ class ProPlanG:
     def read_config_file(self):
         """
         Handle the reading of a config file.
-        First get the path to the config file and then open it.
-        Sort all the data sets by ID and create process objects for every set.
-
-        Afterwards begin the handling of process calculation and drawing.
+        The config is then passed to other functions to handle calculation.
 
         :return: None
         """
         save_path = self.open_file()
-        prev_ids = []
 
         if save_path is not None:
             with open(save_path, "r") as file:
@@ -425,32 +486,49 @@ class ProPlanG:
                         "Die angegebene json-Datei ist nicht gültig."
                     )
 
-            if json_process_data is not None:
-                # sort processes in json if they are not ordered
-                process_list = sorted(json_process_data["Prozesse"], key=lambda k: k['id'])
+                self.handle_json_to_valid_dataset(json_process_data)
 
-                # Iterate over the json process data
-                for element in process_list:
-                    if element.get("id") not in prev_ids:
-                        # Create a new process object for each data set, append all to list
-                        self.process_data.append(ProcessXT(element.get("id"), element.get("name"), element.get("duration")))
-                        prev_ids.append(element.get("id"))
-                    else:
-                        messagebox.showerror(
-                            "Fehler",
-                            "Die Prozess-ID " + element.get("id") + " wird bereits für eine anderen Prozess verwendet.")
+    def handle_json_to_valid_dataset(self, json_process_data):
+        """
+        Sort all the data sets by ID and create process objects for every set.
 
-                # Iterate over the json process data
-                for element in process_list:
-                    # Iterate over the list of successors
-                    for single_successor in element.get("successor"):
-                        # Append the current successor (as obj) to the current data set (as obj)
-                        self.process_data[element.get("id")].add_successor_and_predecessor(self.process_data[single_successor])
+        Afterwards begin the handling of process calculation and drawing.
 
-            self.handle_process_calculation()
-            self.handle_process_drawing()
-            self.handle_arrow_drawing()
-            self.main_canvas.update()
+        :param json_process_data: Input data that was imported.
+        :return: None
+        """
+        prev_ids = []
+
+        if json_process_data is not None:
+            # sort processes in json if they are not ordered
+            process_list = sorted(json_process_data["Prozesse"], key=lambda k: k['id'])
+
+            # Iterate over the json process data
+            for element in process_list:
+                if element.get("id") not in prev_ids:
+                    # Create a new process object for each data set, append all to list
+                    self.process_data.append(ProcessXT(element.get("id"), element.get("name"), element.get("duration")))
+                    prev_ids.append(element.get("id"))
+                else:
+                    messagebox.showerror(
+                        "Fehler",
+                        "Die Prozess-ID " + element.get("id") + " wird bereits für eine anderen Prozess verwendet.")
+
+            # the starting id used to adjust following function calls
+            id_offset = self.process_data[0].id
+
+            # Iterate over the json process data
+            for element in process_list:
+                # Iterate over the list of successors
+                for single_successor in element.get("successor"):
+                    # Append the current successor (as obj) to the current data set (as obj)
+                    self.process_data[element.get("id") - id_offset].add_successor_and_predecessor(
+                        self.process_data[single_successor - id_offset])
+
+        self.handle_process_calculation()
+        self.handle_process_drawing()
+        self.handle_arrow_drawing()
+        self.main_canvas.update()
 
     def reset_data(self):
         """
