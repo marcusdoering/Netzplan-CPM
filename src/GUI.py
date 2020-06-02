@@ -512,7 +512,7 @@ class ProPlanG:
                 else:
                     messagebox.showerror(
                         "Fehler",
-                        "Die Prozess-ID " + element.get("id") + " wird bereits für eine anderen Prozess verwendet.")
+                        "Die Prozess-ID " + element.get("id") + " wird bereits für einen anderen Prozess verwendet.")
 
             # the starting id used to adjust following function calls
             id_offset = self.process_data[0].id
@@ -528,11 +528,12 @@ class ProPlanG:
         self.handle_process_calculation()
         self.handle_process_drawing()
         self.handle_arrow_drawing()
+        # update the canvas so that changes actually appear on screen
         self.main_canvas.update()
 
     def reset_data(self):
         """
-        Reset the data from previous calculations.
+        Reset the data from previous calculations and clear the canvas.
 
         :return: None
         """

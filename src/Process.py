@@ -31,6 +31,12 @@ class Process:
         return self.id
 
     def set_id(self, new_id: int):
+        """
+        Setter method.
+
+        :param new_id: Int to set variable to.
+        :return: None
+        """
         self.id = new_id
 
     def get_name(self):
@@ -42,6 +48,12 @@ class Process:
         return self.name
 
     def set_name(self, new_name: str):
+        """
+        Setter method.
+
+        :param new_name: String to set variable to.
+        :return: None
+        """
         self.name = new_name
 
     def get_dauer(self):
@@ -53,6 +65,12 @@ class Process:
         return self.duration
 
     def set_dauer(self, new_duration: int):
+        """
+        Setter method.
+
+        :param new_duration: Int to set variable to.
+        :return: None
+        """
         self.duration = new_duration
 
     def calc_fez(self):
