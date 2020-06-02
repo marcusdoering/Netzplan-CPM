@@ -1,4 +1,5 @@
 # Netzplan-CPM
+Die Klassen, welche laut Aufgabenstellung erstellt werden sollten befinden sich im Verzeichnis "src"
 (Dateinamen "Process.py" und "ProcessXT.py").
 "GUI.py" enthält die Klasse, welche für die Funktionalität der GUI verantwortlich ist.
 
